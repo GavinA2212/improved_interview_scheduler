@@ -9,7 +9,7 @@ All helper functions are tested thoroughly with extensive unit tests for easy de
 
 Orchestrator function:
 
-compute_available_slots()
+compute_available_slots() -   
     Trim array to within search window O(n) (do this before sort)  
     Build Busy window - combine intervals (Requires sort) O(nlogn)  
     Build available windows (apply interviewer workday and interval start constraints as we build available windows) O(n)  
