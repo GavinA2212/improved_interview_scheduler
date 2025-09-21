@@ -33,8 +33,8 @@ class Command(BaseCommand):
         template.save()
         
         if created:
-            self.stdout.write(self.style.SUCCESS(f"Created InterviewTemplate: {template.name}"))
+            self.stdout.write(self.style.SUCCESS(f"Created InterviewTemplate: {template.name} id:{template.id}"))
         else:
-            self.stdout.write(self.style.WARNING(f"InterviewTemplate already exists: {template.name}"))
+            self.stdout.write(self.style.WARNING(f"InterviewTemplate already exists: {template.name} id:{template.id}"))
             
         self.stdout.write(self.style.SUCCESS(f"Template has {template.interviewers.count()} interviewers assigned"))

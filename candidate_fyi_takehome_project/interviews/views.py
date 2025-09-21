@@ -43,5 +43,17 @@ class InterviewAvailabilityView(APIView):
             all_busy_blocks.extend(interviewer_data["busy"])
 
         available_interview_slots = compute_available_slots(search_start, search_end, valid_interval, all_busy_blocks, interviewers, template.duration)
+        
+        payload = {
+            "interviewId": template.id,
+            "name": template.name,
+            "duration": template.duration,
+            "interviewers": [
+                {"id": i["interviewerId"], "name": i["name"]} for i in busy_data
+            ],
+            "availableSlots": [
+                {"start": slot[0], "end": slot[1]} for slot in available_interview_slots
+            ]
+        }
 
-        return Response(available_interview_slots)
+        return Response(payload, status=status.HTTP_200_OK)

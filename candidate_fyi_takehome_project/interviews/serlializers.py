@@ -32,3 +32,18 @@ class InterviewAvailabilitySerializerIn(serializers.Serializer):
             raise serializers.ValidationError(errors)
         
         return data
+    
+class InterviewerSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+class AvailableSlotSerializer(serializers.Serializer):
+    start = serializers.DateTimeField()
+    end = serializers.DateTimeField()
+
+class InterviewAvailabilitySerializerOut(serializers.Serializer):
+    interviewId = serializers.IntegerField()
+    name = serializers.CharField()
+    duration = serializers.IntegerField()
+    interviewers = InterviewerSerializer(many=True)
+    availableSlots = AvailableSlotSerializer(many=True)

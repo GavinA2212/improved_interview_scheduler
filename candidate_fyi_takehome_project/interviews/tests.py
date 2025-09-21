@@ -5,6 +5,81 @@ from types import SimpleNamespace
 from candidate_fyi_takehome_project.interviews.utils import *
 
 # ------------------- InterviewAvailability util function tests ---------------------------
+class computeAvailableSlotsTests(SimpleTestCase):
+    def setUp(self):
+        self.interviewers = [
+             SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="UTC"),
+        ]
+        self.valid_interval = 60
+        self.duration = 60
+    
+    # Test single interviewer
+    def test_one_slot(self):
+        search_start = utc_dt(2025, 10, day=6, hour=9)
+        search_end = utc_dt(2025, 10, day=6, hour=17)
+        busy_data = [
+            {"start": utc_dt(2025, 10, day=6, hour=9), "end": utc_dt(2025, 10, day=6, hour=10)},
+            {"start": utc_dt(2025, 10, day=6, hour=12), "end": utc_dt(2025, 10, day=6, hour=13)},
+            {"start": utc_dt(2025, 10, day=6, hour=15), "end": utc_dt(2025, 10, day=6, hour=16)},
+        ]
+        
+        expected = [
+            [utc_dt(2025, 10, day=6, hour=10), utc_dt(2025, 10, day=6, hour=11)],
+            [utc_dt(2025, 10, day=6, hour=11), utc_dt(2025, 10, day=6, hour=12)],
+            [utc_dt(2025, 10, day=6, hour=13), utc_dt(2025, 10, day=6, hour=14)],
+            [utc_dt(2025, 10, day=6, hour=14), utc_dt(2025, 10, day=6, hour=15)],
+            [utc_dt(2025, 10, day=6, hour=16), utc_dt(2025, 10, day=6, hour=17)],
+        ]
+        actual = compute_available_slots(search_start, search_end, self.valid_interval, busy_data, self.interviewers, self.duration)
+        self.assertEqual(actual,expected)
+    
+    # Test with multpiple timezone workdays
+    def test_multiple_us_timezones(self):
+        search_start = utc_dt(2025, 10, day=6, hour=12)
+        search_end = utc_dt(2025, 10, day=7, hour=2)
+        busy_data = [
+            {"start": utc_dt(2025, 10, day=6, hour=14), "end": utc_dt(2025, 10, day=6, hour=15)},
+            {"start": utc_dt(2025, 10, day=6, hour=22), "end": utc_dt(2025, 10, day=6, hour=23)},
+        ]
+        
+        # EST interviewer: 9-17 EST = 13-21 UTC
+        # PST interviewer: 9-17 PST = 16-0 UTC (next day)
+        # Overlap: 16-21 UTC
+        us_interviewers = [
+            SimpleNamespace(workday_start_hour=9, workday_end_hour=17, timezone="America/New_York"),
+            SimpleNamespace(workday_start_hour=9, workday_end_hour=17, timezone="America/Los_Angeles"),
+        ]
+        
+        expected = [
+            [utc_dt(2025, 10, day=6, hour=16), utc_dt(2025, 10, day=6, hour=17)],
+            [utc_dt(2025, 10, day=6, hour=17), utc_dt(2025, 10, day=6, hour=18)],
+            [utc_dt(2025, 10, day=6, hour=18), utc_dt(2025, 10, day=6, hour=19)],
+            [utc_dt(2025, 10, day=6, hour=19), utc_dt(2025, 10, day=6, hour=20)],
+            [utc_dt(2025, 10, day=6, hour=20), utc_dt(2025, 10, day=6, hour=21)],
+        ]
+        actual = compute_available_slots(search_start, search_end, self.valid_interval, busy_data, us_interviewers, self.duration)
+        self.assertEqual(actual,expected)
+    
+    # Test in thirty minute intervals
+    def test_thirty_minute_intervals(self):
+        search_start = utc_dt(2025, 10, day=6, hour=9)
+        search_end = utc_dt(2025, 10, day=6, hour=12)
+        busy_data = [
+            {"start": utc_dt(2025, 10, day=6, hour=10), "end": utc_dt(2025, 10, day=6, hour=10, minute=30)},
+        ]
+        
+        valid_interval = 30
+        duration = 30
+        
+        expected = [
+            [utc_dt(2025, 10, day=6, hour=9), utc_dt(2025, 10, day=6, hour=9, minute=30)],
+            [utc_dt(2025, 10, day=6, hour=9, minute=30), utc_dt(2025, 10, day=6, hour=10)],
+            [utc_dt(2025, 10, day=6, hour=11), utc_dt(2025, 10, day=6, hour=11, minute=30)],
+            [utc_dt(2025, 10, day=6, hour=11, minute=30), utc_dt(2025, 10, day=6, hour=12)],
+        ]
+        actual = compute_available_slots(search_start, search_end, valid_interval, busy_data, self.interviewers, duration)
+        self.assertEqual(actual,expected)
+
 
 class trimBusySlotsToWindowTests(SimpleTestCase):
     def setUp(self):
@@ -60,6 +135,7 @@ class trimBusySlotsToWindowTests(SimpleTestCase):
         actual = trim_busy_slots_to_search_window(self.search_start, self.search_end, slots)
         self.assertEqual(actual, expected)
         
+        
 class buildBusyWindowsTests(SimpleTestCase):
     def setUp(self):
         self.slot_one = [utc_dt(2025, 10, 6, 12), utc_dt(2025, 10, 6, 19)]
@@ -101,67 +177,8 @@ class buildBusyWindowsTests(SimpleTestCase):
         expected = [[utc_dt(2025, 10, 6, 8), utc_dt(2025, 10, 6, 22)]]
         actual = build_busy_windows([test_slot, self.slot_one ])
         self.assertEqual(actual, expected)
-        
-class buildAvailableWorkdaySlotTests(SimpleTestCase):
-    def setUp(self):
-        self.standard_start = utc_dt(2025, 10, day=9, hour=13)
-        self.standard_end  = utc_dt(2025, 10, day=9, hour=16)
-        self.maxDiff=1000
-        
 
-    # Test standard utc workday
-    def test_standard_utc_workday(self):
-        test_interviewers = [
-            SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="UTC"),
-            SimpleNamespace(workday_start_hour=7,workday_end_hour=15,timezone="UTC")
-            ]
-        # 9 - 17 utc
-        # 7 - 15 utc
-        # expected 9 - 15 
-         
-        expected = [utc_dt(2025, 10, day=9, hour=9), utc_dt(2025, 10, 9, hour=15)]
-        actual = build_available_workday_slot(self.standard_start, self.standard_end, test_interviewers)
-        self.assertEqual(actual, expected)
-        
-    # Test EST standard workday with PST workday
-    def test_est_with_pst(self):
-        test_interviewers = [
-            SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="America/New_York"),
-            SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="America/Los_Angeles")
-        ]
-        # 9 - 17 est = 13 - 21 utc
-        # 9 - 17 pst = 16 - 0 utc
-        # expected 16 - 21
-        
-        expected = [utc_dt(2025, 10, day=9, hour=16), utc_dt(2025, 10, day=9, hour=21)]
-        actual = build_available_workday_slot(self.standard_start, self.standard_end, test_interviewers)
-        self.assertEqual(actual, expected)
-        
-    # Test est overnight shift to utc
-    def test_overnight_est(self):
-        test_interviewers = [
-            SimpleNamespace(workday_start_hour=18,workday_end_hour=4,timezone="America/New_York"),
-        ]
-        
-        expected = [utc_dt(2025,10, day=9, hour=22), utc_dt(2025, 10, day=10, hour=8) ]
-        actual = build_available_workday_slot(self.standard_start, self.standard_end, test_interviewers)
-        self.assertEqual(actual, expected)
-        
-    def test_overnight_on_dst_day(self):
-        slot_start = utc_dt(2026, 3, day=7, hour=22)
-        end_slot = utc_dt(2026, 3, day=8, hour=9)
-        test_interviewers = [
-            SimpleNamespace(workday_start_hour=18,workday_end_hour=4,timezone="America/New_York"),
-        ]
-        # Expected:
-        # start - March 7th 18:00 EST = 23:00 UTC (-5)
-        # end - March 8th 4:00 EST = 8:00 UTC (-4)
-        
-        expected = [utc_dt(2026,3, day=7, hour=23), utc_dt(2026, 3, day=8, hour=8) ]
-        actual = build_available_workday_slot(slot_start, end_slot, test_interviewers)
-        
-        self.assertEqual(actual, expected)
-        
+
 class trimSlotToAvailableWorkdaysTests(SimpleTestCase):
     def setUp(self):
         self.interviewers = [
@@ -219,66 +236,65 @@ class trimSlotToAvailableWorkdaysTests(SimpleTestCase):
         ]
         actual = actual = trim_slot_to_available_workdays(slot_start, slot_end, self.interviewers)
         self.assertEqual(actual, expected)
+        
+        
+class buildAvailableWorkdaySlotTests(SimpleTestCase):
+    def setUp(self):
+        self.standard_start = utc_dt(2025, 10, day=9, hour=13)
+        
+    # Test standard utc workday
+    def test_standard_utc_workday(self):
+        test_interviewers = [
+            SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="UTC"),
+            SimpleNamespace(workday_start_hour=7,workday_end_hour=15,timezone="UTC")
+            ]
+        # 9 - 17 utc
+        # 7 - 15 utc
+        # expected 9 - 15 
+         
+        expected = [utc_dt(2025, 10, day=9, hour=9), utc_dt(2025, 10, 9, hour=15)]
+        actual = build_available_workday_slot(self.standard_start,  test_interviewers)
+        self.assertEqual(actual, expected)
+        
+    # Test EST standard workday with PST workday
+    def test_est_with_pst(self):
+        test_interviewers = [
+            SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="America/New_York"),
+            SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="America/Los_Angeles")
+        ]
+        # 9 - 17 est = 13 - 21 utc
+        # 9 - 17 pst = 16 - 0 utc
+        # expected 16 - 21
+        
+        expected = [utc_dt(2025, 10, day=9, hour=16), utc_dt(2025, 10, day=9, hour=21)]
+        actual = build_available_workday_slot(self.standard_start, test_interviewers)
+        self.assertEqual(actual, expected)
+        
+    # Test est overnight shift to utc
+    def test_overnight_est(self):
+        test_interviewers = [
+            SimpleNamespace(workday_start_hour=18,workday_end_hour=4,timezone="America/New_York"),
+        ]
+        
+        expected = [utc_dt(2025,10, day=9, hour=22), utc_dt(2025, 10, day=10, hour=8) ]
+        actual = build_available_workday_slot(self.standard_start, test_interviewers)
+        self.assertEqual(actual, expected)
+        
+    def test_overnight_on_dst_day(self):
+        slot_start = utc_dt(2026, 3, day=7, hour=22)
+
+        test_interviewers = [
+            SimpleNamespace(workday_start_hour=18,workday_end_hour=4,timezone="America/New_York"),
+        ]
+        # Expected:
+        # start - March 7th 18:00 EST = 23:00 UTC (-5)
+        # end - March 8th 4:00 EST = 8:00 UTC (-4)
+        
+        expected = [utc_dt(2026,3, day=7, hour=23), utc_dt(2026, 3, day=8, hour=8) ]
+        actual = build_available_workday_slot(slot_start,  test_interviewers)
+        
+        self.assertEqual(actual, expected)
     
-        
-class ceilSlotToInterval(SimpleTestCase):
-
-    # Test round up with 60-minute interval
-    def test_round_up_60_min(self):
-        date = utc_dt(2025, 10, day=9, hour=13, minute=10, second=22)
-        # 13:10:22 -> 14:00:00
-        expected = utc_dt(2025, 10, day=9, hour=14)
-        actual = ceil_slot_to_interval(date, 60)
-        self.assertEqual(actual, expected)
-
-    # Test round up with 30-minute interval just before boundary
-    def test_round_up_30_min_before(self):
-        # 13:29:59 -> 13:30:00
-        date = utc_dt(2025, 10, day=9, hour=13, minute=29, second=59)
-        expected = utc_dt(2025, 10, day=9, hour=13, minute=30)
-        actual = ceil_slot_to_interval(date, 30)
-        self.assertEqual(actual, expected)
-
-    # Test round up with 30-minute interval after boundary
-    def test_round_up_30_min_after(self):
-        # 13:30:22 -> 14:00:00
-        date = utc_dt(2025, 10, day=9, hour=13, minute=30, second=22)
-        
-        expected = utc_dt(2025, 10, day=9, hour=14)
-        actual = ceil_slot_to_interval(date, 30)
-        self.assertEqual(actual, expected)
-
-    # Test round up with 15-minute interval
-    def test_round_up_15_min(self):
-        # 13:37:42 -> 13:45:00
-        date = utc_dt(2025, 10, day=9, hour=13, minute=37, second=42)  
-        expected = utc_dt(2025, 10, day=9, hour=13, minute=45)
-        actual = ceil_slot_to_interval(date, 15)
-        self.assertEqual(actual, expected)
-
-    # Test round up with 10-minute interval
-    def test_round_up_10_min(self):
-        # 13:01:00 -> 13:10:00
-        date = utc_dt(2025, 10, day=9, hour=13, minute=1, second=0)
-        expected = utc_dt(2025, 10, day=9, hour=13, minute=10)
-        actual = ceil_slot_to_interval(date, 10)
-        self.assertEqual(actual, expected)
-
-    # Test round up with 5-minute interval
-    def test_round_up_5_min(self):
-        # 13:04:00 -> 13:05:00
-        date = utc_dt(2025, 10, day=9, hour=13, minute=4, second=0)
-        expected = utc_dt(2025, 10, day=9, hour=13, minute=5)
-        actual = ceil_slot_to_interval(date, 5)
-        self.assertEqual(actual, expected)
-
-    # Test round up with 1-minute interval
-    def test_round_up_1_min(self):
-        # 13:10:01 -> 13:11:00
-        date = utc_dt(2025, 10, day=9, hour=13, minute=10, second=1)
-        expected = utc_dt(2025, 10, day=9, hour=13, minute=11)
-        actual = ceil_slot_to_interval(date, 1)
-        self.assertEqual(actual, expected)
       
 class buildAvailableWindowsTests(SimpleTestCase):
     def setUp(self):
@@ -399,37 +415,68 @@ class buildAvailableInterviewSlotsTests(SimpleTestCase):
         expected = []
         actual = build_available_interview_slots(available_windows, interval, duration)
         self.assertEqual(actual, expected)
+           
+# ------------------------ Test util helpers -----------------------------
+
+class ceilSlotToInterval(SimpleTestCase):
+
+    # Test round up with 60-minute interval
+    def test_round_up_60_min(self):
+        date = utc_dt(2025, 10, day=9, hour=13, minute=10, second=22)
+        # 13:10:22 -> 14:00:00
+        expected = utc_dt(2025, 10, day=9, hour=14)
+        actual = ceil_slot_to_interval(date, 60)
+        self.assertEqual(actual, expected)
+
+    # Test round up with 30-minute interval just before boundary
+    def test_round_up_30_min_before(self):
+        # 13:29:59 -> 13:30:00
+        date = utc_dt(2025, 10, day=9, hour=13, minute=29, second=59)
+        expected = utc_dt(2025, 10, day=9, hour=13, minute=30)
+        actual = ceil_slot_to_interval(date, 30)
+        self.assertEqual(actual, expected)
+
+    # Test round up with 30-minute interval after boundary
+    def test_round_up_30_min_after(self):
+        # 13:30:22 -> 14:00:00
+        date = utc_dt(2025, 10, day=9, hour=13, minute=30, second=22)
         
-class computeAvailableSlotsTests(SimpleTestCase):
-    def setUp(self):
-        self.interviewers = [
-             SimpleNamespace(workday_start_hour=9,workday_end_hour=17,timezone="UTC"),
-        ]
-        self.valid_interval = 60
-        self.duration = 60
-    
-    def test_one_slot(self):
-        search_start = utc_dt(2025, 10, day=6, hour=9)
-        search_end = utc_dt(2025, 10, day=6, hour=17)
-        busy_data = [
-            {"start": utc_dt(2025, 10, day=6, hour=9), "end": utc_dt(2025, 10, day=6, hour=10)},
-            {"start": utc_dt(2025, 10, day=6, hour=12), "end": utc_dt(2025, 10, day=6, hour=13)},
-            {"start": utc_dt(2025, 10, day=6, hour=15), "end": utc_dt(2025, 10, day=6, hour=16)},
-        ]
+        expected = utc_dt(2025, 10, day=9, hour=14)
+        actual = ceil_slot_to_interval(date, 30)
+        self.assertEqual(actual, expected)
+
+    # Test round up with 15-minute interval
+    def test_round_up_15_min(self):
+        # 13:37:42 -> 13:45:00
+        date = utc_dt(2025, 10, day=9, hour=13, minute=37, second=42)  
+        expected = utc_dt(2025, 10, day=9, hour=13, minute=45)
+        actual = ceil_slot_to_interval(date, 15)
+        self.assertEqual(actual, expected)
+
+    # Test round up with 10-minute interval
+    def test_round_up_10_min(self):
+        # 13:01:00 -> 13:10:00
+        date = utc_dt(2025, 10, day=9, hour=13, minute=1, second=0)
+        expected = utc_dt(2025, 10, day=9, hour=13, minute=10)
+        actual = ceil_slot_to_interval(date, 10)
+        self.assertEqual(actual, expected)
+
+    # Test round up with 5-minute interval
+    def test_round_up_5_min(self):
+        # 13:04:00 -> 13:05:00
+        date = utc_dt(2025, 10, day=9, hour=13, minute=4, second=0)
+        expected = utc_dt(2025, 10, day=9, hour=13, minute=5)
+        actual = ceil_slot_to_interval(date, 5)
+        self.assertEqual(actual, expected)
+
+    # Test round up with 1-minute interval
+    def test_round_up_1_min(self):
+        # 13:10:01 -> 13:11:00
+        date = utc_dt(2025, 10, day=9, hour=13, minute=10, second=1)
+        expected = utc_dt(2025, 10, day=9, hour=13, minute=11)
+        actual = ceil_slot_to_interval(date, 1)
+        self.assertEqual(actual, expected)
         
-        expected = [
-            [utc_dt(2025, 10, day=6, hour=10), utc_dt(2025, 10, day=6, hour=11)],
-            [utc_dt(2025, 10, day=6, hour=11), utc_dt(2025, 10, day=6, hour=12)],
-            [utc_dt(2025, 10, day=6, hour=13), utc_dt(2025, 10, day=6, hour=14)],
-            [utc_dt(2025, 10, day=6, hour=14), utc_dt(2025, 10, day=6, hour=15)],
-            [utc_dt(2025, 10, day=6, hour=16), utc_dt(2025, 10, day=6, hour=17)],
-        ]
-        actual = compute_available_slots(search_start, search_end, self.valid_interval, busy_data, self.interviewers, self.duration)
-        self.assertEqual(actual,expected)
-         
-    
-    
-# ---------------------------------------------------------------------------------
         
         
         
