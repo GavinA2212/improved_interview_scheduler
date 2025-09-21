@@ -10,9 +10,9 @@ All helper functions are tested thoroughly with extensive unit tests for easy de
 Orchestrator function:
 
 compute_available_slots()
-    Trim array to within search window O(n) (do this before sort)
-    Build Busy window - combine intervals (Requires sort) O(nlogn)
-    Build available windows (apply interviewer workday and interval start constraints as we build available windows) O(n)
+    Trim array to within search window O(n) (do this before sort)  
+    Build Busy window - combine intervals (Requires sort) O(nlogn)  
+    Build available windows (apply interviewer workday and interval start constraints as we build available windows) O(n)  
     Build Interview Slots from available windows O(n)
 
 Individual workday contraints are computed per day to avoid DST edge cases, and overnight shifts are taken into account by creating datetime values for comparision instead of integer comparison
