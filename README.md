@@ -36,20 +36,20 @@ Individual workday contraints are computed per day to avoid DST edge cases, and 
    ```
 3. Run Unit tests:
   ```bash
-   make manage ARGS="test"
+   make manage ARGS="test -v2"
    ```
    or
    ```bash
-   docker compose run --rm django python ./manage.py test
+   docker compose run --rm django python ./manage.py test -v2
    ```
 
 4. Seed the database with a test interviewtemplate with 3 interviewers of differing US timezone workdays:
    ```bash
-   make seed
+   make  manage ARGS="seed"
    ```
    or
    ```bash
-   docker compose run --rm django python ./manage.py seed_interviews
+   docker compose run --rm django python ./manage.py seed
    ```
 
 5. Access the API at:
