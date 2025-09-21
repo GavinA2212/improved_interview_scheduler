@@ -34,7 +34,7 @@ Individual workday contraints are computed per day to avoid DST edge cases, and 
    ```bash
    docker-compose -f docker-compose.local.yml up -d
    ```
-3. Run Unit tests
+3. Run Unit tests:
   ```bash
    make manage ARGS="test"
    ```
