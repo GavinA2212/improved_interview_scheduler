@@ -1,11 +1,9 @@
 ## Overview 
 
-Improved Interview slot generator by Gavin Augsburger
+Interview slot generator API for overlapping busy schedules. 
+Supports any number of candidates and individual workday constraints, respecting each candidate's time zones.
 
 ## Approach
-
-Break problem down into multiple parts with an orchestrator function, removing clutter from views file.
-All helper functions are tested thoroughly with extensive unit tests for easy detection of bugs and edge case catching.
 
 Orchestrator function:
 
@@ -15,7 +13,7 @@ compute_available_slots()
     -Build available windows (apply interviewer workday and interval start constraints as we build available windows) O(n)  
     -Build Interview Slots from available windows O(n)
 
-Individual workday contraints are computed per day to avoid DST edge cases, and overnight shifts are taken into account by creating datetime values for comparision instead of integer comparison
+Individual workday constraints are computed per day to avoid DST edge cases, and overnight shifts are taken into account by creating datetime values for comparison instead of integer comparison
 
 
 ### Set Up
